@@ -1,0 +1,73 @@
+version: "3.9"
+
+### Customize here 
+x-versions:
+  - &wp_version wordpress:5.9.2-php7.4-fpm-alpine
+  - &nginx_version nginx:stable
+  - &mdb_version mariadb:10.8.2-rc-focal
+  
+x-credentials:
+  - &mdb_pass wp_pass
+  - &mdb_user wp_user
+  - &mdb_db wp_db
+###
+
+services:
+  mariadb:
+    image: *mdb_version
+    restart: unless-stopped
+    networks:
+      - net
+    ports: 
+      - ${MARIADB_PORT}:3306
+    volumes:
+      - db:/var/lib/mysql:z
+      - ./docker/db:/docker-entrypoint-initdb.d
+    environment:
+      TZ: "Europe/Bucharest"
+      MARIADB_ROOT_PASSWORD: *mdb_pass
+      MARIADB_USER: *mdb_user
+      MARIADB_PASSWORD: *mdb_pass
+      MARIADB_DATABASE: *mdb_db
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --silent -u root -p`env | grep MARIADB_ROOT_PASSWORD | cut -d '=' -f2`"]  
+      start_period: 5s
+
+  wordpress:
+    image: *wp_version
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+    networks:
+      - net
+    ports:
+      - ${WP_PORT}:80
+    volumes:
+      - ./wordpress:/var/www/html:z
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/php.ini
+    environment:
+      WORDPRESS_DB_HOST: mariadb
+      WORDPRESS_DB_USER: *mdb_user
+      WORDPRESS_DB_PASSWORD: *mdb_pass
+      WORDPRESS_DB_NAME: *mdb_db
+    
+  nginx:
+    image: *nginx_version
+    restart: always
+    depends_on:
+      - wordpress
+    networks:
+      - net
+    ports:
+      - ${NGINX_PORT}:80
+    volumes:
+      - ./docker/nginx/conf/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./wordpress:/var/www/html:z
+    healthcheck:
+      test: ["CMD-SHELL", "/etc/init.d/nginx status"]
+
+networks:
+  net:
+
+volumes:
+  db:
