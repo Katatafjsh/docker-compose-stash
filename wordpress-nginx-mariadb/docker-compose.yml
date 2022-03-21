@@ -30,7 +30,7 @@ services:
       MARIADB_PASSWORD: *mdb_pass
       MARIADB_DATABASE: *mdb_db
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping --silent -u root -p`env | grep MARIADB_ROOT_PASSWORD | cut -d '=' -f2`"]  
+      test: ["CMD-SHELL", "mysqladmin ping --silent -u root -p$${MARIADB_ROOT_PASSWORD}"]  
       start_period: 5s
 
   wordpress:
