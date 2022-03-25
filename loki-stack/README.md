@@ -1,0 +1,3 @@
+# loki-stack
+
+Local logging
