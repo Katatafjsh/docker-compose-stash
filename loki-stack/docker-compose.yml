@@ -1,0 +1,48 @@
+version: "3.9"
+
+x-versions:
+  - &loki grafana/loki:2.4.2 
+  - &grafana grafana/grafana:8.4.4
+  - &promtail grafana/promtail:2.4.2
+
+services:
+  loki:
+    image: *loki
+    restart: unless-stopped
+    command: -config.file=/mnt/config/loki-config.yaml
+    volumes:
+      - ./docker/config/loki/loki-config.yaml:/mnt/config/loki-config.yaml:ro
+    networks: 
+      - loki-stack
+    ports:
+      - "3100" # HTTP
+      - "9096" # GRPC
+
+  grafana:
+    image: *grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
+    volumes:
+      - ./docker/config/grafana/provisioning/datasources/:/etc/grafana/provisioning/datasources/
+      - grafana-data:/var/lib/grafana
+    networks:
+      - loki-stack
+    ports:
+      - "${GF_PORT}:3000"
+
+  promtail:
+    image: *promtail
+    restart: unless-stopped
+    command: -config.file /mnt/config/promtail-config.yaml
+    volumes:
+      - ./docker/config/promtail/promtail-config.yaml:/mnt/config/promtail-config.yaml:ro
+      - ./sink/:/mnt/sink/:ro
+    networks:
+      - loki-stack
+
+volumes:
+  grafana-data:
+
+networks:
+  loki-stack:
